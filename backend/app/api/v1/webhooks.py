@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import logging
+import time
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
@@ -45,10 +46,15 @@ async def receive_webhook(
     settings: Settings = Depends(get_settings),
     service: WhatsAppService = Depends(get_whatsapp_service),
 ) -> dict[str, str]:
+    started = time.perf_counter()
+
     raw_body = await request.body()
+    after_body = time.perf_counter()
 
     if settings.wa_app_secret and not _valid_signature(
-        settings.wa_app_secret, raw_body, request.headers.get("X-Hub-Signature-256")
+        settings.wa_app_secret,
+        raw_body,
+        request.headers.get("X-Hub-Signature-256"),
     ):
         raise HTTPException(status_code=403, detail="Invalid signature")
 
@@ -56,11 +62,21 @@ async def receive_webhook(
         payload = WebhookPayload.model_validate_json(raw_body)
     except ValidationError as exc:
         logger.warning("Unparseable webhook payload: %s", exc.errors()[:3])
+        logger.info(
+            "Webhook timing: body=%.4fs total=%.4fs",
+            after_body - started,
+            time.perf_counter() - started,
+        )
         return {"status": "ignored"}
 
     background_tasks.add_task(service.process_payload, payload)
-    return {"status": "accepted"}
 
+    logger.info(
+        "Webhook timing: body=%.4fs total=%.4fs",
+        after_body - started,
+        time.perf_counter() - started,
+    )
+    return {"status": "accepted"}
 
 @router.get("/webhook/debug/events")
 async def debug_events(

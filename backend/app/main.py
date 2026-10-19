@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import webhooks
+from app.api.v1.router import api_router
 from app.services.whatsapp_service import get_whatsapp_service
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -27,8 +28,9 @@ app.add_middleware(
 )
 
 app.include_router(webhooks.router)
+app.include_router(api_router)
 
 
 @app.get("/")
 def health_check():
-    return {"status": "ok", "service": "conversafin-ai", "version": "0.2.0"}
+    return {"status": "ok", "service": "conversafin-ai", "version": "0.3.0"}

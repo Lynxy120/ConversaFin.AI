@@ -48,6 +48,17 @@ class MessageContext(_Base):
     id: str | None = None
 
 
+class OrderItem(_Base):
+    product_retailer_id: str
+    quantity: int = 1
+    item_price: float | None = None
+    currency: str | None = None
+
+class OrderPayLoad(_Base):
+    catalog_id: str | None = None
+    text: str | None = None
+    product_items: list[OrderItem] = Field(default_factory=list)
+
 class Message(_Base):
     from_: str = Field(alias="from")
     id: str
@@ -59,9 +70,12 @@ class Message(_Base):
     document: MediaBody | None = None
     interactive: Interactive | None = None
     context: MessageContext | None = None
+    order: OrderPayLoad | None = None
 
     @property
     def body_text(self) -> str:
+        if self.order and self.order.text:
+            return self.order.text
         if self.text:
             return self.text.body
         if self.interactive:
