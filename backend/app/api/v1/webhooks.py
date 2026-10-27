@@ -70,6 +70,7 @@ async def receive_webhook(
     started = time.perf_counter()
 
     raw_body = await request.body()
+    logger.info("WA inbound %d bytes: %s", len(raw_body), raw_body[:600].decode("utf-8", "replace"))
     after_body = time.perf_counter()
 
     if settings.wa_app_secret and not _valid_signature(
