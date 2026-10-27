@@ -26,7 +26,8 @@ def _valid_signature(secret: str, raw_body: bytes, header: str | None) -> bool:
 async def verify_webhook(
     hub_mode: str | None = Query(default=None, alias="hub.mode"),
     hub_challenge: str | None = Query(default=None, alias="hub.challenge"),
-    hub_verify_token: str | None = Query(default=None, alias="hub.verify_token"),
+    # UBAH INI: dari "hub.verify_token" jadi "hub.token"
+    hub_verify_token: str | None = Query(default=None, alias="hub.token"),
     settings: Settings = Depends(get_settings),
 ) -> PlainTextResponse:
     if (
@@ -37,7 +38,6 @@ async def verify_webhook(
     ):
         return PlainTextResponse(content=hub_challenge, status_code=200)
     raise HTTPException(status_code=403, detail="Verification failed")
-
 
 @router.post("/webhook", status_code=200)
 async def receive_webhook(
