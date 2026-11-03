@@ -10,12 +10,12 @@ router = APIRouter(prefix="/orders", tags=["orders"], dependencies=[Depends(requ
 
 @router.get("")
 async def list_orders(limit: int = Query(20, ge=1, le=100), status: str | None = None):
-    return await repo.list_orders(limit=limit, status=status)
+    return await repo.list_orders(limit, status)
 
 
-@router.get("/{order_id}")
-async def get_order(order_id: UUID):
-    order = await repo.get_order(str(order_id))
-    if not order:
-        raise HTTPException(404, "Order not found")
-    return order
+@router.get("/{oid}")
+async def get_order(oid: UUID):
+    o = await repo.get_order(str(oid))
+    if not o:
+        raise HTTPException(404, "not found")
+    return o

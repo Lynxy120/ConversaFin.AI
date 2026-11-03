@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import webhooks
 from app.api.v1.router import api_router
+from app.core.config import get_settings
 from app.services.whatsapp_service import get_whatsapp_service
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -17,20 +18,13 @@ async def lifespan(_: FastAPI):
     await get_whatsapp_service().aclose()
 
 
-app = FastAPI(title="ConversaFin.AI", version="0.2.0", lifespan=lifespan)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+app = FastAPI(title="ConversaFin.AI", version="0.4.0", lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in get_settings().cors_origins.split(",")],
+                   allow_methods=["GET"], allow_headers=["*"])
 app.include_router(webhooks.router)
 app.include_router(api_router)
 
 
 @app.get("/")
-def health_check():
-    return {"status": "ok", "service": "conversafin-ai", "version": "0.3.0"}
+def health():
+    return {"status": "ok", "service": "conversafin-ai", "version": "0.4.0"}

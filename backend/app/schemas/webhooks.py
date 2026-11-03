@@ -86,6 +86,11 @@ class Message(_Base):
             if media and media.caption:
                 return media.caption
         return ""
+    
+    @property
+    def reply_id(self) -> str | None:
+        r = self.interactive and (self.interactive.button_reply or self.interactive.list_reply)
+        return r.id if r else None
 
 
 class Status(_Base):
