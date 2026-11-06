@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     supabase_key: str = ""
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.1-flash-lite"
+    business_profile: str = "UMKM penjualan produk via WhatsApp"
+    gemini_max_output_tokens: int = 2048
+    gemini_timeout: int = 45
+    finance_min_confidence: float = 0.6
+    media_max_mb: int = 10
     wa_phone_number_id: str = "1369280939600113"
     wa_access_token: str = ""
     wa_verify_token: str = "token_rahasia_webhook_123"
