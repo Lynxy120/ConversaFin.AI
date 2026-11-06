@@ -16,6 +16,7 @@ from app.repositories import carts as carts_repo
 from app.repositories import orders as orders_repo
 from app.repositories import products as products_repo
 from app.schemas.webhooks import Message, WebhookPayload
+from app.services.finance_service import Outcome, get_finance_service
 
 log = logging.getLogger("conversafin.wa")
 MAX_ROWS = 10  # WhatsApp list message hard limit
@@ -154,7 +155,7 @@ class WhatsAppService:
         })
 
     async def _dispatch(self, m: Message, role: Role, name: str | None) -> dict[str, Any]:
-        to, rid = m.from_, m.reply_id
+        to, rid, owner = m.from_, m.reply_id, role is Role.OWNER
         if rid and rid.startswith("p:"):
             return await self._add_to_cart(to, rid[2:])
         if rid == "cart:catalog":
@@ -164,10 +165,13 @@ class WhatsAppService:
         if rid == "cart:clear":
             await carts_repo.clear(normalize_phone(to))
             return {"action": "cart_cleared", **await self.send_text_message(to, "Keranjang dikosongkan.")}
-        if m.type not in {"text", "interactive"}:
-            return {"action": "unsupported", **await self.send_text_message(to, "Hanya pesan teks yang didukung.")}
-        cmd = re.sub(r"[^\w/\s]", "", m.body_text).strip().lower()
-        if role is Role.OWNER and cmd == "/orders":
+
+        fs = get_finance_service()
+        if owner and rid and rid.startswith("fin:"):
+            return await self._reply(to, await fs.handle_action(rid))
+
+        cmd = re.sub(r"[^\w/\s]", "", m.body_text).strip().lower() if m.type in {"text", "interactive"} else ""
+        if owner and cmd == "/orders":
             rows = await orders_repo.list_orders(limit=5)
             txt = "5 pesanan terakhir:\n" + ("\n".join(f"#{o['id'][:8].upper()} {rupiah(o['total_price'])} {o['status']}" for o in rows) or "-")
             return {"action": "owner_orders", **await self.send_text_message(to, txt)}
@@ -175,8 +179,15 @@ class WhatsAppService:
             return await self.send_catalog(to)
         if cmd in {"keranjang", "cart"}:
             return await self._show_cart(to, "cart_view")
-        return {"action": f"{role.value}_reply", **await self.send_text_message(to, "Ketik *katalog* untuk produk atau *keranjang* untuk keranjang.")}
 
+        # Owner free-form text / voice note / receipt photo -> AI financial engine
+        if owner and m.type in {"text", "audio", "image"}:
+            return await self._reply(to, await fs.handle_message(m))
+
+        if m.type not in {"text", "interactive"}:
+            return {"action": "unsupported", **await self.send_text_message(to, "Hanya pesan teks yang didukung.")}
+        return {"action": f"{role.value}_reply", **await self.send_text_message(to, "Ketik *katalog* untuk produk atau *keranjang* untuk keranjang.")}
+    
     async def _add_to_cart(self, to: str, sku: str) -> dict[str, Any]:
         try:
             await carts_repo.add(normalize_phone(to), sku)
@@ -216,6 +227,11 @@ class WhatsAppService:
             log.error("QRIS failed %s: %s", order["id"], e)
             await self.send_text_message(to, "QRIS belum dapat dibuat. Tim kami akan menghubungi Anda.")
         return {"action": "order_created", "order_id": order["id"], **res}
+
+    async def _reply(self, to: str, out: Outcome) -> dict[str, Any]:
+        res = await (self.send_buttons(to, out.text[:1024], out.buttons) if out.buttons
+                     else self.send_text_message(to, out.text))
+        return {"action": out.action, **res}
 
 
 @lru_cache
