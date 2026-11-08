@@ -9,7 +9,9 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.services.whatsapp_service import get_whatsapp_service
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+)
 
 
 @asynccontextmanager
@@ -19,8 +21,12 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="ConversaFin.AI", version="0.4.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in get_settings().cors_origins.split(",")],
-                   allow_methods=["GET"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in get_settings().cors_origins.split(",")],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 app.include_router(webhooks.router)
 app.include_router(api_router)
 

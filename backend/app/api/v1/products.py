@@ -16,7 +16,12 @@ async def list_products(limit: int = Query(10, ge=1, le=10)):
     return await repo.list_products(limit=limit)
 
 
-@router.post("", response_model=ProductOut, status_code=201, dependencies=[Depends(require_admin)])
+@router.post(
+    "",
+    response_model=ProductOut,
+    status_code=201,
+    dependencies=[Depends(require_admin)],
+)
 async def create(body: ProductIn):
     try:
         return await repo.create(body.model_dump(mode="json"))
@@ -27,7 +32,9 @@ async def create(body: ProductIn):
         raise
 
 
-@router.patch("/{pid}", response_model=ProductOut, dependencies=[Depends(require_admin)])
+@router.patch(
+    "/{pid}", response_model=ProductOut, dependencies=[Depends(require_admin)]
+)
 async def patch(pid: UUID, body: ProductPatch):
     d = body.model_dump(mode="json", exclude_unset=True)
     if not d:
@@ -46,8 +53,17 @@ async def deactivate(pid: UUID):
 
 
 @router.post("/send-list", dependencies=[Depends(require_admin)])
-async def send_list(body: SendListIn, wa: WhatsAppService = Depends(get_whatsapp_service)):
+async def send_list(
+    body: SendListIn, wa: WhatsAppService = Depends(get_whatsapp_service)
+):
     r = await wa.send_catalog(body.to)
     if not r.get("ok"):
         raise HTTPException(502, r.get("error", "send failed"))
     return r
+
+
+@router.get(
+    "/all", response_model=list[ProductOut], dependencies=[Depends(require_admin)]
+)
+async def list_all(limit: int = Query(200, ge=1, le=500)):
+    return await repo.list_products(active_only=False, limit=limit)
