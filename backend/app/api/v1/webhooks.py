@@ -1,7 +1,7 @@
 import hashlib
 import hmac
+import json
 import logging
-import time
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
@@ -11,39 +11,38 @@ from app.core.config import Settings, get_settings
 from app.schemas.webhooks import WebhookPayload
 from app.services.whatsapp_service import WhatsAppService, get_whatsapp_service
 
-logger = logging.getLogger("conversafin.webhooks")
+log = logging.getLogger("conversafin.webhooks")
 router = APIRouter(tags=["webhooks"])
+MAX_LOG_BYTES = (
+    4000  # raw bodies contain phone numbers (PII): lower or remove once stable
+)
 
 
-def _valid_signature(secret: str, raw_body: bytes, header: str | None) -> bool:
+def _signature_ok(secret: str, raw: bytes, header: str | None) -> bool:
     if not header or not header.startswith("sha256="):
         return False
-    expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+    expected = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, header.removeprefix("sha256="))
 
 
 @router.get("/webhook", response_class=PlainTextResponse)
 async def verify_webhook(
-    request: Request,
+    hub_mode: str | None = Query(default=None, alias="hub.mode"),
+    hub_challenge: str | None = Query(default=None, alias="hub.challenge"),
+    hub_verify_token: str | None = Query(default=None, alias="hub.verify_token"),
     settings: Settings = Depends(get_settings),
 ) -> PlainTextResponse:
-    # 1. Ambil query parameter dari Meta
-    mode = request.query_params.get("hub.mode")
-    token = request.query_params.get("hub.verify_token")
-    challenge = request.query_params.get("hub.challenge")
-
-    # 2. Cek apakah ada mode dan token
-    if mode and token:
-        # 3. Validasi mode dan token
-        if mode == "subscribe" and token == settings.wa_verify_token:
-            print("WEBHOOK_VERIFIED")
-            return PlainTextResponse(content=challenge, status_code=200)
-        else:
-            # Token tidak cocok
-            raise HTTPException(status_code=403, detail="Verification token mismatch")
-
-    # Parameter tidak lengkap
-    raise HTTPException(status_code=400, detail="Missing parameters")
+    if (
+        hub_mode == "subscribe"
+        and hub_challenge is not None
+        and hub_verify_token is not None
+        and hmac.compare_digest(
+            hub_verify_token.encode(), settings.wa_verify_token.encode()
+        )
+    ):
+        return PlainTextResponse(hub_challenge, status_code=200)
+    log.warning("webhook verification rejected (mode=%s)", hub_mode)
+    raise HTTPException(403, "Verification failed")
 
 
 @router.post("/webhook", status_code=200)
@@ -53,41 +52,50 @@ async def receive_webhook(
     settings: Settings = Depends(get_settings),
     service: WhatsAppService = Depends(get_whatsapp_service),
 ) -> dict[str, str]:
-    started = time.perf_counter()
-
-    raw_body = await request.body()
-    logger.info(
-        "WA inbound %d bytes: %s",
-        len(raw_body),
-        raw_body[:600].decode("utf-8", "replace"),
+    # 1) Log raw body BEFORE any signature check or parsing.
+    raw = await request.body()
+    sig = request.headers.get("X-Hub-Signature-256")
+    log.info(
+        "WA inbound POST bytes=%d sig_header=%s body=%s",
+        len(raw),
+        bool(sig),
+        raw[:MAX_LOG_BYTES].decode("utf-8", "replace"),
     )
-    after_body = time.perf_counter()
 
-    if settings.wa_app_secret and not _valid_signature(
-        settings.wa_app_secret,
-        raw_body,
-        request.headers.get("X-Hub-Signature-256"),
-    ):
-        raise HTTPException(status_code=403, detail="Invalid signature")
+    # 2) Signature: enforced only when a secret is configured AND not in development.
+    secret = settings.wa_app_secret
+    if not secret:
+        log.warning("WA_APP_SECRET not set: signature verification skipped")
+    elif not _signature_ok(secret, raw, sig):
+        if settings.app_env == "development":
+            log.warning("invalid/missing X-Hub-Signature-256 (dev mode: continuing)")
+        else:
+            log.error(
+                "invalid X-Hub-Signature-256 -> 403 (check WA_APP_SECRET = App settings > Basic > App secret)"
+            )
+            raise HTTPException(403, "Invalid signature")
 
+    # 3) Parse. Never return non-2xx for bad shapes (Meta would retry); log loudly instead.
     try:
-        payload = WebhookPayload.model_validate_json(raw_body)
-    except ValidationError as exc:
-        logger.warning("Unparseable webhook payload: %s", exc.errors()[:3])
-        logger.info(
-            "Webhook timing: body=%.4fs total=%.4fs",
-            after_body - started,
-            time.perf_counter() - started,
+        payload = WebhookPayload.model_validate(json.loads(raw))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        log.error("WA payload is not valid JSON")
+        return {"status": "ignored"}
+    except ValidationError as e:
+        log.error(
+            "WA payload failed validation: %s",
+            json.dumps(e.errors(include_url=False, include_context=False), default=str)[
+                :1500
+            ],
         )
         return {"status": "ignored"}
 
-    background_tasks.add_task(service.process_payload, payload)
+    n_msg = sum(len(c.value.messages) for en in payload.entry for c in en.changes)
+    n_sts = sum(len(c.value.statuses) for en in payload.entry for c in en.changes)
+    log.info("WA payload parsed: messages=%d statuses=%d -> queued", n_msg, n_sts)
 
-    logger.info(
-        "Webhook timing: body=%.4fs total=%.4fs",
-        after_body - started,
-        time.perf_counter() - started,
-    )
+    # 4) Queue and return 200 immediately.
+    background_tasks.add_task(service.process_payload, payload)
     return {"status": "accepted"}
 
 
@@ -97,5 +105,5 @@ async def debug_events(
     service: WhatsAppService = Depends(get_whatsapp_service),
 ) -> dict:
     if settings.app_env != "development":
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(404, "Not found")
     return {"dry_run": settings.wa_dry_run, "events": list(service.events)}
