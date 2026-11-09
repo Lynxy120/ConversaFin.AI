@@ -27,38 +27,24 @@ async def verify_webhook(
     request: Request,
     settings: Settings = Depends(get_settings),
 ) -> PlainTextResponse:
-    print("\n" + "="*70)
-    print("🔍 META WEBHOOK REQUEST DEBUG")
-    print(f"Full URL: {request.url}")
-    print(f"Query Params: {dict(request.query_params)}")
-    print(f"Headers: {dict(request.headers)}")
-    print(f"Expected Token from Env (wa_verify_token): '{settings.wa_verify_token}'")
-    print("="*70 + "\n")
-    
-    query_params = request.query_params
-    hub_mode = query_params.get("hub.mode")
-    hub_challenge = query_params.get("hub.challenge")
-    
-    # Coba ambil dari 'hub.token' ATAU 'hub.verify_token' (Meta kadang inkonsisten)
-    hub_token = query_params.get("hub.token") or query_params.get("hub.verify_token")
-    
-    expected_token = str(settings.wa_verify_token) if settings.wa_verify_token else ""
+    # 1. Ambil query parameter dari Meta
+    mode = request.query_params.get("hub.mode")
+    token = request.query_params.get("hub.verify_token")
+    challenge = request.query_params.get("hub.challenge")
 
-    if hub_mode == "subscribe" and hub_challenge and hub_token:
-        if hmac.compare_digest(hub_token, expected_token):
-            print(f"✅ VERIFIKASI BERHASIL! Returning challenge: {hub_challenge}")
-            return PlainTextResponse(content=hub_challenge, status_code=200)
+    # 2. Cek apakah ada mode dan token
+    if mode and token:
+        # 3. Validasi mode dan token
+        if mode == "subscribe" and token == settings.wa_verify_token:
+            print("WEBHOOK_VERIFIED")
+            return PlainTextResponse(content=challenge, status_code=200)
         else:
-            print(f"❌ TOKEN MISMATCH!")
-            print(f"   Received : '{hub_token}'")
-            print(f"   Expected : '{expected_token}'")
-    else:
-        print(f"❌ PARAMETER TIDAK LENGKAP!")
-        print(f"   mode: '{hub_mode}'")
-        print(f"   challenge: '{hub_challenge}'")
-        print(f"   token: '{hub_token}'")
-        
-    raise HTTPException(status_code=403, detail="Verification failed")
+            # Token tidak cocok
+            raise HTTPException(status_code=403, detail="Verification token mismatch")
+
+    # Parameter tidak lengkap
+    raise HTTPException(status_code=400, detail="Missing parameters")
+
 
 @router.post("/webhook", status_code=200)
 async def receive_webhook(
@@ -70,7 +56,11 @@ async def receive_webhook(
     started = time.perf_counter()
 
     raw_body = await request.body()
-    logger.info("WA inbound %d bytes: %s", len(raw_body), raw_body[:600].decode("utf-8", "replace"))
+    logger.info(
+        "WA inbound %d bytes: %s",
+        len(raw_body),
+        raw_body[:600].decode("utf-8", "replace"),
+    )
     after_body = time.perf_counter()
 
     if settings.wa_app_secret and not _valid_signature(
@@ -99,6 +89,7 @@ async def receive_webhook(
         time.perf_counter() - started,
     )
     return {"status": "accepted"}
+
 
 @router.get("/webhook/debug/events")
 async def debug_events(
