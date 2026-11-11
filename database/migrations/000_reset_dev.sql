@@ -1,0 +1,2 @@
+drop function if exists public.checkout_cart(text,text,text), public.add_to_cart(text,text), public.add_to_cart(text,uuid) cascade;
+drop table if exists public.cart_items, public.order_items, public.orders, public.financial_records, public.products cascade;

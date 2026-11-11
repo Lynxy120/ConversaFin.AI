@@ -5,8 +5,7 @@ from postgrest.exceptions import APIError
 
 from app.core.security import require_admin
 from app.repositories import products as repo
-from app.schemas.catalog import ProductIn, ProductOut, ProductPatch, SendListIn
-from app.services.whatsapp_service import WhatsAppService, get_whatsapp_service
+from app.schemas.catalog import ProductIn, ProductOut, ProductPatch
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -27,7 +26,6 @@ async def create(body: ProductIn):
         return await repo.create(body.model_dump(mode="json"))
     except APIError as e:
         if "23505" in str(e):
-            # Tampilkan pesan asli dari Postgres biar kelihatan kolom mana yang duplicate
             raise HTTPException(409, f"Conflict: {e.message} ({e.details})") from e
         raise
 
@@ -50,16 +48,6 @@ async def deactivate(pid: UUID):
     if not await repo.update(str(pid), {"is_active": False}):
         raise HTTPException(404, "not found")
     return {"status": "deactivated"}
-
-
-@router.post("/send-list", dependencies=[Depends(require_admin)])
-async def send_list(
-    body: SendListIn, wa: WhatsAppService = Depends(get_whatsapp_service)
-):
-    r = await wa.send_catalog(body.to)
-    if not r.get("ok"):
-        raise HTTPException(502, r.get("error", "send failed"))
-    return r
 
 
 @router.get(
