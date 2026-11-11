@@ -130,7 +130,7 @@ export function ProductDialog({
             defaultChecked={product?.is_active ?? true}
             className="size-5 accent-primary"
           />
-          Active (visible in WhatsApp catalog)
+          Active (shown in Telegram catalog)
         </label>
         {err && (
           <p role="alert" className="text-sm text-danger">

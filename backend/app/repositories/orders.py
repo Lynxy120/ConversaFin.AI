@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
 from typing import Any
+from datetime import datetime, timezone
 
 from postgrest.exceptions import APIError
 
@@ -9,25 +9,18 @@ from app.core.supabase import get_supabase
 class EmptyCart(Exception): ...
 
 
-async def checkout(
-    phone: str, name: str | None, telegram_message_id: str
-) -> dict[str, Any]:
+async def checkout(chat_id: str, name: str | None, ref: str) -> dict[str, Any]:
     c = await get_supabase()
     try:
         r = await c.rpc(
-            "checkout_cart",
-            {
-                "p_phone": phone,
-                "p_name": name,
-                "p_telegram_message_id": telegram_message_id,
-            },
+            "checkout_cart", {"p_chat": chat_id, "p_name": name, "p_ref": ref}
         ).execute()
     except APIError as e:
         if "EMPTY_CART" in str(e):
             raise EmptyCart from e
         raise
     o = r.data[0] if isinstance(r.data, list) else r.data
-    return await get_order(o["id"])
+    return await get_order(o["id"])  # type: ignore[return-value]
 
 
 async def get_order(order_id: str) -> dict[str, Any] | None:

@@ -107,7 +107,7 @@ export function DashboardCharts({ data }: { data: Summary }) {
         <EmptyState
           icon={BarChart3}
           title="No transactions in this period"
-          description="Send a voice note or receipt photo to your WhatsApp bot to record your first transaction."
+          description="Send a voice note or receipt photo to your Telegram bot to record your first transaction."
         />
       </div>
     );

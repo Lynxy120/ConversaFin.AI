@@ -44,7 +44,7 @@ const SRC: Record<
   string,
   { l: string; t: "info" | "success" | "warning" | "neutral" }
 > = {
-  whatsapp: { l: "WhatsApp", t: "info" },
+  telegram: { l: "Telegram", t: "info" },
   midtrans: { l: "QRIS", t: "success" },
   ai: { l: "AI", t: "warning" },
   manual: { l: "Manual", t: "neutral" },
@@ -247,7 +247,7 @@ export default function Transactions() {
           description={
             dirty
               ? "Try a wider date range or clear some filters."
-              : "Send a voice note or receipt photo to your WhatsApp bot to record one."
+              : "Send a voice note or receipt photo to your Telegram bot to record one."
           }
           action={
             dirty ? (

@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import {
-  AlertTriangle,
   Package,
   Pencil,
   Plus,
@@ -24,7 +23,6 @@ import { api } from "@/lib/api";
 import { idr } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
-const WA_LIMIT = 10;
 
 export default function Catalog() {
   const { data, error, isLoading, mutate } = useProducts();
@@ -38,7 +36,6 @@ export default function Catalog() {
   const list = (data ?? []).filter((p) =>
     `${p.name} ${p.sku}`.toLowerCase().includes(q.trim().toLowerCase()),
   );
-  const active = (data ?? []).filter((p) => p.is_active).length;
 
   async function remove() {
     if (!del) return;
@@ -79,17 +76,6 @@ export default function Catalog() {
           <Plus size={18} /> Add product
         </Button>
       </header>
-
-      {active > WA_LIMIT && (
-        <GlassCard className="mb-4 flex items-start gap-3 border-warning/40 p-4 text-sm">
-          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-warning" />
-          <p>
-            {active} products are active, but WhatsApp list messages show only
-            the first {WA_LIMIT}. Deactivate the rest or reorder by recreating
-            them.
-          </p>
-        </GlassCard>
-      )}
 
       {data && data.length > 0 && (
         <div className="relative mb-4 max-w-sm">
@@ -222,7 +208,7 @@ export default function Catalog() {
         open={!!del}
         busy={busy}
         title={`Delete “${del?.name ?? ""}”?`}
-        description="The product will be hidden from the WhatsApp catalog. Existing orders keep their data. You can re-activate it later."
+        description="The product will be hidden from the Telegram catalog. Existing orders keep their data. You can re-activate it later."
         onConfirm={remove}
         onCancel={() => setDel(null)}
       />

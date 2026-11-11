@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.api.v1 import telegram
 from app.integrations.telegram import get_telegram_client
 from app.services.bot_service import get_bot_service
+from app.api.v1.router import api_router
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -42,6 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(telegram.router)
+app.include_router(api_router)
 
 
 @app.get("/")

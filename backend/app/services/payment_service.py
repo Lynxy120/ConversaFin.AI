@@ -4,9 +4,12 @@ from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from typing import Any
 
+import httpx
 from fastapi import BackgroundTasks
 
 from app.core.config import get_settings
+from app.core.format import rupiah
+from app.integrations.telegram import get_telegram_client
 from app.repositories import finance as finance_repo
 from app.repositories import orders as orders_repo
 from app.schemas.payments import MidtransNotification
@@ -16,8 +19,6 @@ from app.services.midtrans_service import (
     get_midtrans_service,
     map_status,
 )
-from app.services.telegram_service import get_telegram_service
-from app.utils.currency import idr as rupiah
 
 log = logging.getLogger("conversafin.pay")
 WIB = timezone(timedelta(hours=7))
@@ -28,8 +29,11 @@ class PaymentError(Exception): ...
 
 class PaymentService:
     def __init__(self) -> None:
-        self._s = get_settings()
-        self._mt = get_midtrans_service()
+        self._s, self._mt, self._tg = (
+            get_settings(),
+            get_midtrans_service(),
+            get_telegram_client(),
+        )
 
     @staticmethod
     def _res(mid: str, url: str, exp_iso: str | None) -> dict[str, Any]:
@@ -60,7 +64,7 @@ class PaymentService:
         ):
             return self._res(
                 order["midtrans_order_id"], order["payment_url"], exp
-            )  # reuse valid QR
+            )  # reuse valid QR: no double charge
         items = [
             {
                 "id": i["sku"],
@@ -73,10 +77,7 @@ class PaymentService:
         mid = f"CF-{order['id'].replace('-', '')[:12].upper()}-{int(time.time())}"
         try:
             ch = await self._mt.charge_qris(
-                order_id=mid,
-                items=items,
-                name=order.get("customer_name"),
-                phone=order.get("customer_phone"),
+                order_id=mid, items=items, name=order.get("customer_name"), phone=None
             )
         except MidtransError as e:
             raise PaymentError(str(e)) from e
@@ -91,6 +92,32 @@ class PaymentService:
             mid,
             ch["qr_url"],
             ch["expires_at"].isoformat() if ch["expires_at"] else None,
+        )
+
+    async def send_qris(self, chat_id: int, order: dict[str, Any]) -> dict[str, Any]:
+        try:
+            pay = await self.create_qris(order)
+        except PaymentError as e:
+            log.error("QRIS failed %s: %s", order["id"], e)
+            return await self._tg.send_message(
+                chat_id, "⚠️ QRIS belum dapat dibuat. Tim kami akan menghubungi Anda."
+            )
+        cap = f"Scan QRIS untuk membayar {rupiah(order['total_price'])}.\nBerlaku hingga {pay['expires_label']}."
+        png = None
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as c:
+                r = await c.get(pay["qr_url"])
+            if r.status_code == 200 and r.headers.get("content-type", "").startswith(
+                "image/"
+            ):
+                png = r.content
+        except httpx.HTTPError:
+            log.warning("QR download failed for %s", order["id"])
+        res = await self._tg.send_photo(chat_id, png, cap) if png else {"ok": False}
+        return (
+            res
+            if res["ok"]
+            else await self._tg.send_message(chat_id, f"{cap}\n{pay['qr_url']}")
         )
 
     async def handle_notification(
@@ -129,45 +156,39 @@ class PaymentService:
         return {"result": "paid", "order_id": paid["id"]}
 
     async def post_payment(self, order_id: str) -> None:
-        tg = get_telegram_service()
         o = await orders_repo.get_order(order_id)
         if not o:
             return
-        no, to, url = rs.receipt_number(o), o["customer_phone"], ""
+        no, chat, tg = rs.receipt_number(o), int(o["chat_id"]), self._tg
         try:
             await finance_repo.record_income(
                 amount=o["total_price"],
-                description=f"Order {no} - {to}",
+                description=f"Order {no} - {o.get('customer_name') or chat}",
                 reference_id=o["midtrans_order_id"],
             )
         except Exception:
-            log.exception("finance failed %s", order_id)
+            log.exception("finance insert failed %s", order_id)
+        pdf = None
         try:
-            path = await rs.store_receipt(order_id, rs.build_receipt_pdf(o))
-            await orders_repo.set_receipt(order_id, path)
-            url = await rs.signed_url(path)
+            pdf = rs.build_receipt_pdf(o)
+            await orders_repo.set_receipt(
+                order_id, await rs.store_receipt(order_id, pdf)
+            )
         except Exception:
             log.exception("receipt failed %s", order_id)
-        try:
-            await tg.send_message(
-                chat_id=to,
-                text=f"Pembayaran {rupiah(o['total_price'])} untuk #{no} berhasil ✅",
+        await tg.send_message(
+            chat,
+            f"✅ Pembayaran {rupiah(o['total_price'])} untuk #{no} diterima. Terima kasih!",
+        )
+        if pdf:
+            await tg.send_document(
+                chat, pdf, f"Receipt-{no}.pdf", "🧾 Bukti pembayaran"
             )
-            if url:
-                await tg.send_document(
-                    chat_id=to, document_url=url, caption=f"Bukti Pembayaran #{no}"
-                )
-
-            owner_ids = [
-                int(x) for x in self._s.telegram_owner_ids.split(",") if x.strip()
-            ]
-            for ow in owner_ids:
-                await tg.send_message(
-                    chat_id=ow,
-                    text=f"💰 Masuk: #{no} {rupiah(o['total_price'])} dari {o.get('customer_name') or to}",
-                )
-        except Exception:
-            log.exception("Telegram notify failed %s", order_id)
+        for owner in self._s.owner_ids:
+            await tg.send_message(
+                owner,
+                f"💰 Masuk: #{no} {rupiah(o['total_price'])} dari {o.get('customer_name') or chat}",
+            )
 
 
 @lru_cache

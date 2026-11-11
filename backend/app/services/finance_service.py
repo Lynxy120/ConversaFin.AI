@@ -8,11 +8,11 @@ from uuid import UUID
 from app.core.config import get_settings
 from app.repositories import finance as repo
 from app.schemas.finance import ExtractionResult, Transaction
-from app.schemas.webhooks import Message
 from app.services.gemini_service import AIError, get_gemini_service
+from app.integrations.telegram import TelegramError, get_telegram_client
+from app.schemas.telegram import Message
 from app.services.media_service import (
     MediaError,
-    download_telegram_media,
     validate_media,
 )
 
@@ -131,29 +131,41 @@ class FinanceService:
         }
 
     # ---------- Telegram Adapters ----------
-    async def handle_message(self, m: Message) -> Outcome:
+    async def handle_message(self, m: Message, chat_id: int) -> Outcome:
+        ref, actor = f"tg:{chat_id}:{m.message_id}", str(chat_id)
         try:
-            if m.type == "text":
-                res = await self.run(
-                    kind="text",
-                    text=m.body_text,
-                    ref=m.id,
-                    actor=m.from_,
-                    source="telegram",
+            fid, mime, kind = None, None, "text"
+            if m.voice or m.audio:
+                a = m.voice or m.audio
+                fid, mime, kind = (
+                    a.file_id,
+                    a.mime_type or "audio/ogg",
+                    "audio",
+                )  # Telegram voice = OGG/Opus
+            elif m.photo:
+                p = max(m.photo, key=lambda x: x.width * x.height)  # largest size
+                fid, mime, kind = p.file_id, "image/jpeg", "image"
+            elif m.document and (m.document.mime_type or "").startswith(
+                ("image/", "audio/")
+            ):
+                fid, mime = m.document.file_id, m.document.mime_type
+                kind = "image" if mime.startswith("image/") else "audio"
+            if fid:
+                data = await get_telegram_client().get_file_bytes(
+                    fid, self._s.media_max_mb * 1024 * 1024
                 )
+                res = await self.run(kind=kind, data=data, mime=mime, ref=ref, actor=actor, source="telegram")  # type: ignore[arg-type]
             else:
-                media = m.audio if m.type == "audio" else m.image
-                if not media or not media.id:
-                    raise FinanceError("Media tidak valid.")
-                data, mime = await download_telegram_media(media.id)
-                res = await self.run(kind=m.type, data=data, mime=mime, ref=m.id, actor=m.from_, source="telegram")  # type: ignore[arg-type]
-        except (FinanceError, AIError, MediaError) as e:
+                res = await self.run(
+                    kind="text", text=m.body, ref=ref, actor=actor, source="telegram"
+                )
+        except MediaError:
+            return Outcome("fin_error", "⚠️ Maaf, audio/gambar kurang jelas. Ulangi atau ketik nominal pastinya.")
+        except (FinanceError, AIError, TelegramError) as e:
             return Outcome("fin_error", f"⚠️ {e}")
         except Exception:
-            log.exception("finance pipeline failed for %s", m.id)
-            return Outcome(
-                "fin_error", "⚠️ Terjadi kesalahan sistem. Coba lagi sebentar lagi."
-            )
+            log.exception("finance pipeline failed %s", ref)
+            return Outcome("fin_error", "⚠️ Terjadi kesalahan sistem. Coba lagi.")
         return self._outcome(res)
 
     def _outcome(self, r: RunResult) -> Outcome:
@@ -185,7 +197,7 @@ class FinanceService:
             )
         return Outcome(
             "fin_none",
-            r.extraction.clarification or "Tidak ada transaksi keuangan terdeteksi.",
+            r.extraction.clarification or "Maaf, audio/gambar kurang jelas. Ulangi atau ketik nominal pastinya.",
         )
 
     async def handle_action(self, rid: str) -> Outcome:

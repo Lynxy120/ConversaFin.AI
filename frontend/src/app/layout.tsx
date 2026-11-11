@@ -11,7 +11,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: { default: "KasirChat.AI", template: "%s · KasirChat.AI" },
-  description: "Dashboard keuangan & katalog untuk penjual via WhatsApp",
+  description: "Dashboard keuangan & katalog untuk penjual via Telegram",
   applicationName: "KasirChat.AI",
   manifest: "/manifest.json",
   appleWebApp: { capable: true, title: "KasirChat", statusBarStyle: "default" },

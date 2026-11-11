@@ -2,7 +2,7 @@
     "id": "/",
     "name": "KasirChat.AI",
     "short_name": "KasirChat",
-    "description": "Dashboard keuangan & katalog untuk penjual via WhatsApp",
+    "description": "Dashboard keuangan & katalog untuk penjual via Telegram",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
