@@ -12,9 +12,9 @@ export function Fab({
     <button
       aria-label={label}
       onClick={onClick}
-      className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-20 grid size-14 place-items-center rounded-full bg-linear-135 from-primary to-blue-500 text-white shadow-lg transition hover:-translate-y-px lg:right-8 lg:bottom-8"
+      className="glass fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+6rem)] z-30 grid size-14 place-items-center rounded-2xl text-primary shadow-xl shadow-primary/30 ring-1 ring-primary/30 transition hover:-translate-y-0.5 lg:hidden"
     >
-      <Plus size={26} />
+      <Plus size={26} strokeWidth={2.4} />
     </button>
   );
 }

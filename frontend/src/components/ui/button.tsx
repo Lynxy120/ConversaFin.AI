@@ -2,10 +2,12 @@ import { cn } from "@/lib/cn";
 
 const V = {
   primary:
-    "bg-linear-135 from-primary to-blue-500 font-bold text-white shadow-sm hover:-translate-y-px hover:shadow-md",
+    "btn-brand font-semibold text-white shadow-lg shadow-primary/25 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/35",
   ghost:
-    "border border-slate-200 bg-transparent text-ink hover:bg-primary-light",
-  danger: "bg-danger font-bold text-white hover:-translate-y-px",
+    "border border-slate-300/80 text-ink hover:bg-primary/10 dark:border-white/15 dark:hover:bg-white/10",
+  quiet: "bg-slate-500/10 text-ink hover:bg-slate-500/20",
+  danger:
+    "bg-danger font-semibold text-white shadow-lg shadow-danger/25 hover:-translate-y-0.5",
 } as const;
 
 export function Button({
@@ -16,8 +18,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm transition duration-150",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm transition duration-200 disabled:pointer-events-none disabled:opacity-50",
         V[variant],
         className,
       )}

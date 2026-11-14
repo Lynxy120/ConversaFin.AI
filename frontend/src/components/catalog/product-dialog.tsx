@@ -4,7 +4,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, inputCls } from "@/components/ui/field";
 import { api } from "@/lib/api";
+import { shrink } from "@/lib/image";
 import type { Product } from "@/lib/types";
+import { ImageDropzone } from "./image-dropzone";
 
 export function ProductDialog({
   product,
@@ -18,6 +20,8 @@ export function ProductDialog({
   const ref = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [dropExisting, setDropExisting] = useState(false);
 
   useEffect(() => {
     ref.current?.showModal();
@@ -28,22 +32,18 @@ export function ProductDialog({
     setBusy(true);
     setErr("");
     const f = new FormData(e.currentTarget);
-    const t = (k: string) => String(f.get(k) ?? "").trim();
-    const body = {
-      name: t("name"),
-      description: t("description") || null,
-      price: Number(f.get("price")),
-      image_url: t("image_url") || null,
-      is_active: f.get("is_active") === "on",
-    };
+    const fd = new FormData();
+    fd.set("name", String(f.get("name") ?? "").trim());
+    fd.set("price", String(f.get("price") ?? ""));
+    fd.set("description", String(f.get("description") ?? "").trim());
+    fd.set("is_active", f.get("is_active") === "on" ? "true" : "false");
     try {
-      if (product)
-        await api(`/products/${product.id}`, { method: "PATCH", json: body });
-      else
-        await api("/products", {
-          method: "POST",
-          json: { sku: t("sku"), ...body },
-        });
+      if (file) fd.set("image", await shrink(file));
+      else if (dropExisting) fd.set("remove_image", "true");
+      await api(product ? `/products/${product.id}` : "/products", {
+        method: product ? "PATCH" : "POST",
+        form: fd,
+      });
       toast.success(
         product ? "Product updated successfully" : "Product added successfully",
       );
@@ -60,12 +60,24 @@ export function ProductDialog({
       ref={ref}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && ref.current?.close()}
-      className="glass m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl p-0 text-ink backdrop:bg-slate-900/30 backdrop:backdrop-blur-sm"
+      className="glass m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-3xl p-0 text-ink backdrop:bg-slate-900/40 backdrop:backdrop-blur-md dark:backdrop:bg-black/60"
     >
       <form onSubmit={submit} className="flex flex-col gap-4 p-6">
         <h2 className="text-lg font-bold">
           {product ? "Edit product" : "Add product"}
         </h2>
+        <ImageDropzone
+          file={file}
+          existingUrl={dropExisting ? null : product?.image_url}
+          onFile={(f) => {
+            setFile(f);
+            setDropExisting(false);
+          }}
+          onClear={() => {
+            setFile(null);
+            setDropExisting(true);
+          }}
+        />
         <Field label="Name">
           <input
             name="name"
@@ -76,42 +88,22 @@ export function ProductDialog({
           />
         </Field>
         <Field
-          label="SKU"
+          label="Price (IDR)"
           hint={
-            product ? "SKU cannot be changed" : "Letters, numbers, - and _ only"
+            product ? `SKU ${product.sku}` : "SKU is generated automatically"
           }
         >
-          <input
-            name="sku"
-            required
-            pattern="[A-Za-z0-9_\-]{1,100}"
-            defaultValue={product?.sku}
-            readOnly={!!product}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Price (IDR)">
           <input
             name="price"
             type="number"
             inputMode="numeric"
             required
             min={0}
-            max={999999999999}
             step={1}
             defaultValue={
               product ? Math.round(Number(product.price)) : undefined
             }
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Image URL" hint="Optional. Public https link.">
-          <input
-            name="image_url"
-            type="url"
-            defaultValue={product?.image_url ?? ""}
-            placeholder="https://…"
-            className={inputCls}
+            className={`${inputCls} tabular-nums`}
           />
         </Field>
         <Field label="Description">
@@ -120,10 +112,10 @@ export function ProductDialog({
             rows={3}
             maxLength={500}
             defaultValue={product?.description ?? ""}
-            className={`${inputCls} py-2`}
+            className={`${inputCls} py-3`}
           />
         </Field>
-        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+        <label className="flex min-h-12 items-center gap-3 text-sm font-semibold">
           <input
             name="is_active"
             type="checkbox"
@@ -140,7 +132,7 @@ export function ProductDialog({
         <div className="flex justify-end gap-2">
           <Button
             type="button"
-            variant="ghost"
+            variant="quiet"
             onClick={() => ref.current?.close()}
             disabled={busy}
           >

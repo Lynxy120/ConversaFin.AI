@@ -1,22 +1,30 @@
 "use client";
+import { ThemeProvider } from "next-themes";
 import { SWRConfig } from "swr";
-import { Toaster } from "sonner";
 import { SwRegister } from "@/components/pwa/sw-register";
+import { AppToaster } from "@/components/toaster";
 import { fetcher } from "@/lib/api";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SWRConfig
-      value={{
-        fetcher,
-        revalidateOnFocus: false,
-        shouldRetryOnError: false,
-        dedupingInterval: 5000,
-      }}
+    <ThemeProvider
+      attribute="data-theme"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
     >
-      {children}
-      <Toaster position="top-center" richColors closeButton />
-      <SwRegister />
-    </SWRConfig>
+      <SWRConfig
+        value={{
+          fetcher,
+          revalidateOnFocus: false,
+          shouldRetryOnError: false,
+          dedupingInterval: 5000,
+        }}
+      >
+        {children}
+        <AppToaster />
+        <SwRegister />
+      </SWRConfig>
+    </ThemeProvider>
   );
 }

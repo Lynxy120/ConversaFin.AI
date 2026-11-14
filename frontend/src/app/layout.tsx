@@ -14,17 +14,23 @@ export const metadata: Metadata = {
   description: "Dashboard keuangan & katalog untuk penjual via Telegram",
   applicationName: "KasirChat.AI",
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, title: "KasirChat", statusBarStyle: "default" },
+  appleWebApp: {
+    capable: true,
+    title: "KasirChat",
+    statusBarStyle: "black-translucent",
+  },
   icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
-  formatDetection: { telephone: false },
   robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0EA5E9",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0EA5E9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0B1120" },
+  ],
 };
 
 export default function RootLayout({
@@ -33,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id" className={jakarta.variable}>
+    <html lang="id" className={jakarta.variable} suppressHydrationWarning>
       <body className="min-h-dvh font-sans antialiased">
         <Providers>{children}</Providers>
       </body>

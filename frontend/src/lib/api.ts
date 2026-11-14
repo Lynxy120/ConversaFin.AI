@@ -7,7 +7,7 @@ export class ApiError extends Error {
   }
 }
 
-type Init = Omit<RequestInit, "body"> & { json?: unknown };
+type Init = Omit<RequestInit, "body"> & { json?: unknown; form?: FormData };
 type Q = Record<string, string | number | boolean | null | undefined>;
 
 export const qs = (p: Q) => {
@@ -20,7 +20,7 @@ export const qs = (p: Q) => {
 
 export async function api<T>(
   path: string,
-  { json, ...init }: Init = {},
+  { json, form, ...init }: Init = {},
 ): Promise<T> {
   const res = await fetch(`/api/proxy${path}`, {
     ...init,
@@ -29,12 +29,11 @@ export async function api<T>(
       ...(json !== undefined ? { "Content-Type": "application/json" } : {}),
       ...init.headers,
     },
-    body: json !== undefined ? JSON.stringify(json) : undefined,
+    body: form ?? (json !== undefined ? JSON.stringify(json) : undefined), // FormData: browser sets the boundary
   });
   if (res.status === 401) {
-    if (typeof window !== "undefined") 
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.href = "/login";
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    if (typeof window !== "undefined") window.location.href = "/login";
     throw new ApiError(401, "Session expired");
   }
   const text = await res.text();

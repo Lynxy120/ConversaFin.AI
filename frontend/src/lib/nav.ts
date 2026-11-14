@@ -1,16 +1,63 @@
-import { LayoutDashboard, Package, ReceiptText, Settings } from "lucide-react";
+import {
+  ClipboardList,
+  Package,
+  PiggyBank,
+  ReceiptText,
+  Settings,
+  Store,
+  type LucideIcon,
+} from "lucide-react";
 
-export const NAV = [
-  { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard },
-  { href: "/catalog", label: "Catalog", short: "Catalog", icon: Package },
+export interface NavItem {
+  href: string;
+  label: string;
+  short: string;
+  icon: LucideIcon;
+}
+
+export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
-    href: "/transactions",
-    label: "Transactions",
-    short: "History",
-    icon: ReceiptText,
+    label: "Dashboard",
+    items: [
+      { href: "/", label: "Bisnis", short: "Bisnis", icon: Store },
+      {
+        href: "/dashboard/keuangan",
+        label: "Keuangan",
+        short: "Keuangan",
+        icon: PiggyBank,
+      },
+    ],
   },
-  { href: "/settings", label: "Settings", short: "Profile", icon: Settings },
-] as const;
+  {
+    label: "Operasional",
+    items: [
+      {
+        href: "/orders",
+        label: "Orders",
+        short: "Orders",
+        icon: ClipboardList,
+      },
+      { href: "/catalog", label: "Catalog", short: "Catalog", icon: Package },
+      {
+        href: "/transactions",
+        label: "Transactions",
+        short: "History",
+        icon: ReceiptText,
+      },
+      {
+        href: "/settings",
+        label: "Settings",
+        short: "Profile",
+        icon: Settings,
+      },
+    ],
+  },
+];
+
+export const NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
+export const MOBILE_NAV: NavItem[] = NAV.filter(
+  (n) => n.href !== "/transactions",
+); // 5 tabs max on phones
 
 export const isActive = (path: string, href: string) =>
   href === "/" ? path === "/" : path.startsWith(href);

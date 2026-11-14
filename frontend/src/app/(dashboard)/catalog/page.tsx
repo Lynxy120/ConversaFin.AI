@@ -1,13 +1,6 @@
 "use client";
 import { useState } from "react";
-import {
-  Package,
-  Pencil,
-  Plus,
-  Power,
-  Search,
-  Trash2,
-} from "lucide-react";
+import { Package, Pencil, Plus, Power, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ProductDialog } from "@/components/catalog/product-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +15,6 @@ import { useProducts } from "@/hooks/use-data";
 import { api } from "@/lib/api";
 import { idr } from "@/lib/format";
 import type { Product } from "@/lib/types";
-
 
 export default function Catalog() {
   const { data, error, isLoading, mutate } = useProducts();
@@ -53,11 +45,10 @@ export default function Catalog() {
   }
 
   async function activate(p: Product) {
+    const fd = new FormData();
+    fd.set("is_active", "true");
     try {
-      await api(`/products/${p.id}`, {
-        method: "PATCH",
-        json: { is_active: true },
-      });
+      await api(`/products/${p.id}`, { method: "PATCH", form: fd });
       toast.success("Product activated");
       await mutate();
     } catch (e) {

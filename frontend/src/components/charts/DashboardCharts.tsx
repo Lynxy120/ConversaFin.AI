@@ -28,9 +28,10 @@ const C = {
   income: "#10B981",
   expense: "#EF4444",
   profit: "#0EA5E9",
-  grid: "rgba(100,116,139,.18)",
-  tick: "#64748B",
+  grid: "var(--line)",
+  tick: "var(--muted)",
 };
+
 const PIE = [
   "#0EA5E9",
   "#3B82F6",
@@ -40,16 +41,19 @@ const PIE = [
   "#EC4899",
   "#94A3B8",
 ];
+
 const tip = {
   contentStyle: {
-    background: "rgba(255,255,255,.92)",
-    backdropFilter: "blur(12px)",
-    border: "1px solid rgba(255,255,255,.5)",
+    background: "var(--glass)",
+    backdropFilter: "blur(16px)",
+    border: "1px solid var(--glass-border)",
     borderRadius: 12,
-    boxShadow: "0 4px 30px rgba(0,0,0,.08)",
+    boxShadow: "var(--glass-shadow)",
+    color: "var(--ink)",
     fontSize: 12,
   },
 };
+
 const axis = {
   tick: { fill: C.tick, fontSize: 11 },
   tickLine: false,
@@ -72,7 +76,7 @@ function Panel({
     <GlassCard className={`p-4 sm:p-5 ${className ?? ""}`}>
       <h2 className="font-bold">{title}</h2>
       {sub && <p className="mb-3 text-xs text-muted">{sub}</p>}
-      <div className="mt-2 h-64 sm:h-72">{children}</div>
+      <div className="chart-glow mt-2 h-64 sm:h-72">{children}</div>
     </GlassCard>
   );
 }

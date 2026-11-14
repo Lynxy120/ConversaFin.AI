@@ -1,5 +1,4 @@
-export const inputCls =
-  "min-h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 read-only:bg-slate-100 read-only:text-muted";
+export const inputCls = "field min-h-12 w-full rounded-xl px-4 text-sm";
 
 export function Field({
   label,
@@ -11,8 +10,8 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-semibold text-ink">{label}</span>
+    <label className="flex flex-col gap-1.5 text-sm">
+      <span className="font-semibold">{label}</span>
       {children}
       {hint && <span className="text-xs text-muted">{hint}</span>}
     </label>

@@ -2,13 +2,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { NAV, isActive } from "@/lib/nav";
+import { MOBILE_NAV, isActive } from "@/lib/nav";
 
 export function BottomNav() {
   const path = usePathname();
   return (
-    <nav className="glass fixed inset-x-0 bottom-0 z-30 flex pb-[env(safe-area-inset-bottom)] lg:hidden">
-      {NAV.map(({ href, short, icon: Icon }) => (
+    <nav
+      aria-label="Main"
+      className="glass fixed inset-x-0 bottom-0 z-30 flex pb-[env(safe-area-inset-bottom)] lg:hidden"
+    >
+      {MOBILE_NAV.map(({ href, short, icon: Icon }) => (
         <Link
           key={href}
           href={href}

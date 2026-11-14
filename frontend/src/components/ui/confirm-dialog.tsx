@@ -30,12 +30,12 @@ export function ConfirmDialog({
     <dialog
       ref={ref}
       onClose={onCancel}
-      className="glass m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl p-6 text-ink backdrop:bg-slate-900/30 backdrop:backdrop-blur-sm"
+      className="glass m-auto w-[calc(100%-2rem)] max-w-sm rounded-3xl p-6 text-ink backdrop:bg-slate-900/40 backdrop:backdrop-blur-md dark:backdrop:bg-black/60"
     >
       <h2 className="text-lg font-bold">{title}</h2>
       <p className="mt-2 text-sm text-muted">{description}</p>
       <div className="mt-6 flex justify-end gap-2">
-        <Button variant="ghost" onClick={onCancel} disabled={busy}>
+        <Button variant="quiet" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>
         <Button variant="danger" onClick={onConfirm} disabled={busy}>

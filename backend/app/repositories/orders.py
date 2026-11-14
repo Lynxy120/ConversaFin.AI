@@ -111,3 +111,57 @@ async def set_receipt(order_id: str, path: str) -> None:
     await (await get_supabase()).table("orders").update({"receipt_path": path}).eq(
         "id", order_id
     ).execute()
+
+
+async def list_tasks(limit: int = 200) -> list[dict[str, Any]]:
+    r = (
+        await (await get_supabase())
+        .table("orders")
+        .select("*, order_items(*)")
+        .or_(
+            "status.eq.pending,and(status.eq.paid,fulfillment_status.in.(new,preparing,ready))"
+        )
+        .order("created_at")
+        .limit(limit)
+        .execute()
+    )
+    return r.data
+
+
+async def advance(
+    order_id: str, *, expect: str, to: str, note: str | None
+) -> dict[str, Any] | None:
+    """Compare-and-set on fulfillment_status; returns None if the order changed meanwhile."""
+    d: dict[str, Any] = {"fulfillment_status": to}
+    if note is not None:
+        d["fulfillment_note"] = note
+    if to in ("completed", "cancelled"):
+        d["fulfilled_at"] = datetime.now(timezone.utc).isoformat()
+    r = (
+        await (await get_supabase())
+        .table("orders")
+        .update(d)
+        .eq("id", order_id)
+        .eq("status", "paid")
+        .eq("fulfillment_status", expect)
+        .execute()
+    )
+    return r.data[0] if r.data else None
+
+
+async def cancel_unpaid(order_id: str, note: str | None) -> dict[str, Any] | None:
+    r = (
+        await (await get_supabase())
+        .table("orders")
+        .update(
+            {
+                "status": "cancelled",
+                "fulfillment_status": "cancelled",
+                "fulfillment_note": note,
+            }
+        )
+        .eq("id", order_id)
+        .eq("status", "pending")
+        .execute()
+    )
+    return r.data[0] if r.data else None

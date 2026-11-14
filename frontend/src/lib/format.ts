@@ -29,3 +29,15 @@ export const shiftDays = (iso: string, d: number) => {
 };
 export const catLabel = (c?: string | null) =>
   (c ?? "other").replace(/_/g, " ").replace(/^\w/, (m) => m.toUpperCase());
+export const minutesSince = (iso: string) =>
+  Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+export const ago = (iso: string) => {
+  const m = minutesSince(iso);
+  return m < 1
+    ? "just now"
+    : m < 60
+      ? `${m} min ago`
+      : m < 1440
+        ? `${Math.floor(m / 60)} h ago`
+        : `${Math.floor(m / 1440)} d ago`;
+};

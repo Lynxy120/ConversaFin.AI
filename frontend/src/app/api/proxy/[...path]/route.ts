@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60; // Render free tier cold start
+export const maxDuration = 60;
 
-const ALLOWED = new Set(["products", "orders", "finance", "bot"]);
+const ALLOWED = new Set(["products", "orders", "finance", "bot", "analytics"]);
 
 async function handle(
   req: NextRequest,
@@ -15,14 +15,15 @@ async function handle(
   }
   const url = `${process.env.API_URL}/api/v1/${path.map(encodeURIComponent).join("/")}${req.nextUrl.search}`;
   const hasBody = !["GET", "HEAD"].includes(req.method);
+  const ct = req.headers.get("content-type");
   try {
     const up = await fetch(url, {
       method: req.method,
       headers: {
         "X-API-Key": process.env.ADMIN_API_KEY ?? "",
-        ...(hasBody ? { "Content-Type": "application/json" } : {}),
+        ...(ct ? { "Content-Type": ct } : {}),
       },
-      body: hasBody ? await req.text() : undefined,
+      body: hasBody ? await req.arrayBuffer() : undefined, // raw bytes: keeps the multipart boundary intact
       cache: "no-store",
       signal: AbortSignal.timeout(55_000),
     });

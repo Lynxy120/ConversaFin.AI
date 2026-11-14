@@ -76,6 +76,16 @@ export default function Transactions() {
   const [qInput, setQInput] = useState("");
   const [exporting, setExporting] = useState<"xlsx" | "pdf" | null>(null);
 
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q")?.trim();
+    if (!q) return;
+    const id = setTimeout(() => {
+      setQInput(q);
+      setF((s) => (s.q === q ? s : { ...s, q }));
+    }, 0);
+    return () => clearTimeout(id);
+  }, []);
+
   const set = (p: Partial<RecordFilters>) => {
     setF((s) => ({ ...s, ...p }));
     setPage(0);
@@ -267,7 +277,7 @@ export default function Transactions() {
             )}
           >
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200/70 text-xs text-muted uppercase">
+              <thead className="border-b border-slate-200/70 text-xs text-muted uppercase dark:border-white/10">
                 <tr>
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Description</th>

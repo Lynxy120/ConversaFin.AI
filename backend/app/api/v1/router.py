@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import orders, products, payments, ai, bot, finance
+from app.api.v1 import ai, analytics, bot, cashflow, finance, orders, payments, products
 
 api_router = APIRouter(prefix="/api/v1")
 for r in (
@@ -9,6 +9,8 @@ for r in (
     payments.router,
     ai.router,
     finance.router,
+    cashflow.router,
     bot.router,
+    analytics.router,
 ):
     api_router.include_router(r)

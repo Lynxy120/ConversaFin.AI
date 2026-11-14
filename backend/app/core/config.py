@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     supabase_url: str = ""
     supabase_key: str = ""
+    product_image_bucket: str = "product-images"
 
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash-lite"

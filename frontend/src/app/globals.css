@@ -1,43 +1,98 @@
 @import "tailwindcss";
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme inline {
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --color-primary: #0ea5e9;
-  --color-primary-light: #e0f2fe;
-  --color-lilac: #f3e8ff;
+  --color-primary-2: #3b82f6;
+  --color-primary-light: var(--primary-soft);
   --color-success: #10b981;
   --color-danger: #ef4444;
   --color-warning: #f59e0b;
-  --color-ink: #0f172a;
-  --color-muted: #64748b;
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+}
+
+:root {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --bg-a: #e0f2fe;
+  --bg-b: #f3e8ff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: rgba(15, 23, 42, 0.1);
+  --primary-soft: #e0f2fe;
+  --glass: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+  --field: rgba(255, 255, 255, 0.75);
+  --shimmer: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b1120;
+  --bg-a: #0f172a;
+  --bg-b: #020617;
+  --ink: #f8fafc;
+  --muted: #94a3b8;
+  --line: rgba(255, 255, 255, 0.1);
+  --primary-soft: rgba(14, 165, 233, 0.14);
+  --glass: rgba(15, 23, 42, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --field: rgba(15, 23, 42, 0.55);
+  --shimmer: rgba(255, 255, 255, 0.08);
 }
 
 body {
-  color: var(--color-ink);
-  background-color: #fff;
+  color: var(--ink);
+  background-color: var(--bg);
   background-image:
-    radial-gradient(60rem 40rem at 0% 0%, #e0f2fe 0%, transparent 60%),
-    radial-gradient(60rem 40rem at 100% 100%, #f3e8ff 0%, transparent 60%);
+    radial-gradient(60rem 40rem at 0% 0%, var(--bg-a), transparent 62%),
+    radial-gradient(60rem 40rem at 100% 100%, var(--bg-b), transparent 62%);
   background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
 }
 
 @utility glass {
-  background: rgba(255, 255, 255, 0.7);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass {
-    background: #fff;
+    background: var(--bg);
+  }
+}
+
+@utility btn-brand {
+  background-image: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
+}
+
+@utility field {
+  background: var(--field);
+  border: 1px solid var(--line);
+  color: var(--ink);
+
+  &::placeholder {
+    color: var(--muted);
+  }
+
+  &:focus {
+    outline: 2px solid #0ea5e9;
+    outline-offset: 1px;
+    border-color: transparent;
   }
 }
 
 @utility skeleton {
   background-color: rgba(148, 163, 184, 0.18);
-  background-image: linear-gradient(90deg, rgba(255, 255, 255, .35) 25%, rgba(255, 255, 255, .85) 50%, rgba(255, 255, 255, .35) 75%);
+  background-image: linear-gradient(90deg, transparent 25%, var(--shimmer) 50%, transparent 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s linear infinite;
 }
@@ -48,8 +103,21 @@ body {
   }
 }
 
+[data-theme="dark"] .chart-glow :is(.recharts-line-curve, .recharts-area-curve) {
+  filter: drop-shadow(0 0 8px rgba(14, 165, 233, 0.6));
+}
+
+:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
   }
 }

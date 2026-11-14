@@ -19,6 +19,18 @@ async def list_products(
     return (await q.execute()).data
 
 
+async def get(pid: str) -> dict[str, Any] | None:
+    r = (
+        await (await get_supabase())
+        .table("products")
+        .select("*")
+        .eq("id", pid)
+        .limit(1)
+        .execute()
+    )
+    return r.data[0] if r.data else None
+
+
 async def create(data: dict[str, Any]) -> dict[str, Any]:
     return (await (await get_supabase()).table("products").insert(data).execute()).data[
         0

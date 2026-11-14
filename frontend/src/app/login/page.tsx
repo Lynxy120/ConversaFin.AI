@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
+import { inputCls } from "@/components/ui/field";
 
 export default function Login() {
   const router = useRouter();
@@ -30,8 +31,6 @@ export default function Login() {
     router.refresh();
   }
 
-  const input =
-    "min-h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30";
   return (
     <main className="grid min-h-dvh place-items-center p-4">
       <GlassCard className="w-full max-w-sm p-6">
@@ -49,7 +48,7 @@ export default function Login() {
             autoComplete="username"
             placeholder="Username"
             required
-            className={input}
+            className={inputCls}
           />
           <input
             name="pass"
@@ -57,7 +56,7 @@ export default function Login() {
             autoComplete="current-password"
             placeholder="Password"
             required
-            className={input}
+            className={inputCls}
           />
           {err && (
             <p role="alert" className="text-sm text-danger">

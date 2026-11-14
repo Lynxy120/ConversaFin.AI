@@ -3,13 +3,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { NAV, isActive } from "@/lib/nav";
+import { NAV_GROUPS, isActive } from "@/lib/nav";
 import { LogoutButton } from "./logout-button";
 
 export function Sidebar() {
   const path = usePathname();
   return (
-    <aside className="glass fixed inset-y-0 left-0 z-30 hidden w-[250px] flex-col p-4 lg:flex">
+    <aside className="glass fixed inset-y-0 left-0 z-30 hidden w-[260px] flex-col p-4 lg:flex">
       <div className="mb-8 flex items-center gap-3 px-2">
         <Image
           src="/icons/icon-192.png"
@@ -22,21 +22,33 @@ export function Sidebar() {
           KasirChat<span className="text-primary">.AI</span>
         </span>
       </div>
-      <nav className="flex flex-1 flex-col gap-1">
-        {NAV.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            aria-current={isActive(path, href) ? "page" : undefined}
-            className={cn(
-              "flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm transition",
-              isActive(path, href)
-                ? "bg-primary/10 font-bold text-primary"
-                : "text-muted hover:bg-primary-light",
-            )}
-          >
-            <Icon size={20} /> {label}
-          </Link>
+      <nav
+        aria-label="Main"
+        className="flex flex-1 flex-col gap-6 overflow-y-auto"
+      >
+        {NAV_GROUPS.map((g) => (
+          <div key={g.label}>
+            <p className="mb-2 px-3 text-[11px] font-bold tracking-wider text-muted uppercase">
+              {g.label}
+            </p>
+            <div className="flex flex-col gap-1">
+              {g.items.map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={isActive(path, href) ? "page" : undefined}
+                  className={cn(
+                    "flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm transition",
+                    isActive(path, href)
+                      ? "bg-primary/10 font-bold text-primary"
+                      : "text-muted hover:bg-primary/10",
+                  )}
+                >
+                  <Icon size={20} /> {label}
+                </Link>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
       <LogoutButton className="w-full" />
